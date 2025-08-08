@@ -15,15 +15,31 @@ const selectPriority = document.querySelector("#select-priority");
 const editselectPriority = document.querySelector("#select-priority-edit");
 
 let oldInputValue;
+let useLocalStorage = false; // Flag para controlar se deve usar localStorage
 
 // URL base da API (será ajustada automaticamente quando hospedado no Netlify)
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
   ? 'http://localhost:8888/.netlify/functions' 
   : window.location.origin + '/.netlify/functions';
 
-// Funções de API
+// Funções de localStorage como fallback
+function getTodosFromLocalStorage() {
+  const todos = localStorage.getItem('todos');
+  return todos ? JSON.parse(todos) : [];
+}
+
+function saveTodosToLocalStorage(todos) {
+  localStorage.setItem('todos', JSON.stringify(todos));
+}
+
+// Funções de API com fallback para localStorage
 
 async function apiRequest(endpoint, options = {}) {
+  // Se já estamos usando localStorage, não tenta a API
+  if (useLocalStorage) {
+    return null;
+  }
+
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       headers: {
@@ -39,36 +55,92 @@ async function apiRequest(endpoint, options = {}) {
     
     return await response.json();
   } catch (error) {
-    console.error('Erro na requisição da API:', error);
-    // Fallback para localStorage em caso de erro
+    console.warn('Erro na requisição da API, usando localStorage como fallback:', error);
+    // Marca para usar localStorage daqui em diante
+    useLocalStorage = true;
     return null;
   }
 }
 
 async function getTodosFromAPI() {
+  if (useLocalStorage) {
+    return getTodosFromLocalStorage();
+  }
+
   const todos = await apiRequest('/todos');
-  return todos || [];
+  if (todos === null) {
+    // API falhou, usar localStorage
+    return getTodosFromLocalStorage();
+  }
+  return todos;
 }
 
 async function saveTodoToAPI(todo) {
-  return await apiRequest('/todos', {
+  if (useLocalStorage) {
+    const todos = getTodosFromLocalStorage();
+    todos.push(todo);
+    saveTodosToLocalStorage(todos);
+    return todo;
+  }
+
+  const result = await apiRequest('/todos', {
     method: 'POST',
     body: JSON.stringify(todo)
   });
+  
+  if (result === null) {
+    // API falhou, usar localStorage
+    const todos = getTodosFromLocalStorage();
+    todos.push(todo);
+    saveTodosToLocalStorage(todos);
+    return todo;
+  }
+  
+  return result;
 }
 
 async function updateTodosInAPI(todos) {
-  return await apiRequest('/todos', {
+  if (useLocalStorage) {
+    saveTodosToLocalStorage(todos);
+    return todos;
+  }
+
+  const result = await apiRequest('/todos', {
     method: 'PUT',
     body: JSON.stringify(todos)
   });
+  
+  if (result === null) {
+    // API falhou, usar localStorage
+    saveTodosToLocalStorage(todos);
+    return todos;
+  }
+  
+  return result;
 }
 
 async function removeTodoFromAPI(task) {
-  return await apiRequest('/todos', {
+  if (useLocalStorage) {
+    const todos = getTodosFromLocalStorage();
+    const filteredTodos = todos.filter(todo => todo.task !== task);
+    saveTodosToLocalStorage(filteredTodos);
+    return filteredTodos;
+  }
+
+  const result = await apiRequest('/todos', {
     method: 'DELETE',
     body: JSON.stringify({ task })
   });
+  
+  if (result === null) {
+    // API falhou, usar localStorage
+    const todos = getTodosFromLocalStorage();
+    const filteredTodos = todos.filter(todo => todo.task !== task);
+    saveTodosToLocalStorage(filteredTodos);
+    return filteredTodos;
+  }
+  
+  return result;
 }
 
 // Funções Gerais
@@ -150,7 +222,7 @@ async function saveTodo(task, done = 0, save = 1, prioritySelected) {
         removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         todo.appendChild(removeBtn);
 
-        // Utilizando dados da API
+        // Utilizando dados da API ou localStorage
         if (done) {
             todo.classList.add("done");
         }
@@ -184,7 +256,7 @@ async function updateTodo(text, priority) {
         }
     });
 
-    // Atualizar na API
+    // Atualizar na API ou localStorage
     await updateTodoInAPI(oldInputValue, text, priority);
 }
 
@@ -275,7 +347,7 @@ function countTodos() {
     countStatus.innerText = `Status: ${doneTodos}/${totalTodos}`;
 }
 
-// Função para carregar todos da API
+// Função para carregar todos da API ou localStorage
 async function loadTodosFromAPI() {
     const todos = await getTodosFromAPI();
     
@@ -287,6 +359,11 @@ async function loadTodosFromAPI() {
     });
     
     countTodos();
+    
+    // Mostrar aviso se estiver usando localStorage
+    if (useLocalStorage) {
+        console.warn('Aplicação funcionando em modo offline - usando localStorage');
+    }
 }
 
 // Eventos
@@ -386,6 +463,5 @@ filterBtn.addEventListener("change", (e) => {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTodosFromAPI();
 });
-
 
 
