@@ -1,0 +1,389 @@
+// Seleção de elementos
+
+const todoForm = document.querySelector("#todo-form");
+const todoInput = document.querySelector("#todo-input");
+const todoList = document.querySelector("#todo-list");
+const editForm = document.querySelector("#edit-form");
+const editInput = document.querySelector("#edit-input");
+const cancelEditBtn = document.querySelector("#cancel-edit-btn");
+const searchInput = document.querySelector("#search-input");
+const eraseBtn = document.querySelector("#erase-button");
+const filterBtn = document.querySelector("#filter-select");
+const toolbar = document.querySelector("#toolbar");
+const countStatus = document.querySelector("#countStatus");
+const selectPriority = document.querySelector("#select-priority");
+const editselectPriority = document.querySelector("#select-priority-edit");
+
+let oldInputValue;
+
+// URL base da API (será ajustada automaticamente quando hospedado no Netlify)
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? 'http://localhost:8888/.netlify/functions' 
+  : '/.netlify/functions';
+
+// Funções de API
+
+async function apiRequest(endpoint, options = {}) {
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Erro na requisição da API:', error);
+    // Fallback para localStorage em caso de erro
+    return null;
+  }
+}
+
+async function getTodosFromAPI() {
+  const todos = await apiRequest('/todos');
+  return todos || [];
+}
+
+async function saveTodoToAPI(todo) {
+  return await apiRequest('/todos', {
+    method: 'POST',
+    body: JSON.stringify(todo)
+  });
+}
+
+async function updateTodosInAPI(todos) {
+  return await apiRequest('/todos', {
+    method: 'PUT',
+    body: JSON.stringify(todos)
+  });
+}
+
+async function removeTodoFromAPI(task) {
+  return await apiRequest('/todos', {
+    method: 'DELETE',
+    body: JSON.stringify({ task })
+  });
+}
+
+// Funções Gerais
+
+function addPriority(value, el) {
+    switch (value) {
+        case "low":
+            el.classList.add("priority-low");
+            el.id = "priority-low";
+            el.innerHTML = `<p>Baixa</p>`;
+            break;
+        case "middle":
+            el.classList.add("priority-middle");
+            el.id = "priority-middle";
+            el.innerHTML = `<p>Média</p>`;
+            break;
+        case "high":
+            el.classList.add("priority-high");
+            el.id = "priority-high";
+            el.innerHTML = `<p>Alta</p>`;
+            break;
+        default:
+            break;
+    }
+    return el;
+}
+
+function verifyTitleTask(task) {
+    const todos = document.querySelectorAll(".todo");
+    let titlesList = [];
+
+    todos.forEach((todo) => {
+        const todoTitle = todo.querySelector("h3").innerText;
+        titlesList.push(todoTitle);
+    });
+
+    if (titlesList.includes(task)) {
+        alert("Tarefa já existe no TO DO.");
+        return true;
+    }
+}
+
+function clearValue() {
+    todoInput.value = ""
+    todoInput.focus();
+}
+
+async function saveTodo(task, done = 0, save = 1, prioritySelected) {
+
+    if (!verifyTitleTask(task)) {
+        const todo = document.createElement("div");
+        todo.classList.add("todo");
+
+        const todoTitle = document.createElement("h3");
+        todoTitle.innerHTML = task;
+        todo.appendChild(todoTitle);
+
+        if (!prioritySelected) {
+            prioritySelected = selectPriority.value;
+        }
+
+        let priority = document.createElement("div");
+        priority = addPriority(prioritySelected, priority);
+
+        todo.appendChild(priority);
+
+        const doneBtn = document.createElement("button");
+        doneBtn.classList.add("finish-todo");
+        doneBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        todo.appendChild(doneBtn);
+
+        const editBtn = document.createElement("button");
+        editBtn.classList.add("edit-todo");
+        editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        todo.appendChild(editBtn);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.classList.add("remove-todo");
+        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        todo.appendChild(removeBtn);
+
+        // Utilizando dados da API
+        if (done) {
+            todo.classList.add("done");
+        }
+        if (save) {
+            await saveTodoToAPI({ task: task, done: 0, priority: prioritySelected });
+        }
+
+        todoList.appendChild(todo);
+    }
+
+    clearValue();
+}
+
+function toggleForms() {
+    editForm.classList.toggle("hide");
+    todoForm.classList.toggle("hide");
+    todoList.classList.toggle("hide");
+}
+
+async function updateTodo(text, priority) {
+    const todos = document.querySelectorAll(".todo");
+
+    todos.forEach((todo) => {
+        let todoTitle = todo.querySelector("h3");
+
+        if (todoTitle.innerText === oldInputValue) {
+            todoTitle.innerText = text;
+            let priorityDiv = todo.querySelector("div[id^='priority-']");
+            priorityDiv.id = "";
+            addPriority(priority, priorityDiv);
+        }
+    });
+
+    // Atualizar na API
+    await updateTodoInAPI(oldInputValue, text, priority);
+}
+
+async function updateTodoInAPI(oldTask, newTask, priority) {
+    const todos = await getTodosFromAPI();
+    const updatedTodos = todos.map(todo => 
+        todo.task === oldTask 
+            ? { ...todo, task: newTask, priority: priority }
+            : todo
+    );
+    await updateTodosInAPI(updatedTodos);
+}
+
+async function updateStatusTodoInAPI(task) {
+    const todos = await getTodosFromAPI();
+    const updatedTodos = todos.map(todo => 
+        todo.task === task 
+            ? { ...todo, done: !todo.done }
+            : todo
+    );
+    await updateTodosInAPI(updatedTodos);
+}
+
+function getSearchTodos(search) {
+
+    const todos = document.querySelectorAll(".todo");
+
+    todos.forEach((todo) => {
+        let todoTitle = todo.querySelector("h3").innerText.toLowerCase();
+
+        const normalizedSearch = search.toLowerCase();
+
+        todo.style.display = "flex";
+
+        if (!todoTitle.includes(normalizedSearch)) {
+            todo.style.display = "none";
+        }
+    })
+}
+
+function deleteSearch() {
+    searchInput.value = "";
+    searchInput.dispatchEvent(new Event("keyup"));
+}
+
+function filterTodos(filterValue) {
+
+    const todos = document.querySelectorAll(".todo");
+
+    switch (filterValue) {
+        case "all":
+            todos.forEach((todo) => {
+                todo.style.display = "flex";
+            })
+            break;
+
+        case "done":
+            todos.forEach((todo) => {
+                todo.classList.contains("done") ?
+                    (todo.style.display = "flex") :
+                    (todo.style.display = "none");
+            })
+            break;
+
+        case "todo":
+            todos.forEach((todo) => {
+                !todo.classList.contains("done") ?
+                    todo.style.display = "flex" :
+                    todo.style.display = "none";
+            })
+            break;
+        default:
+            break;
+    }
+}
+
+function countTodos() {
+    const todos = document.querySelectorAll(".todo");
+    let totalTodos = todos.length;
+    let doneTodos = 0;
+
+    todos.forEach((todo) => {
+        if (todo.classList.contains("done")) {
+            doneTodos++;
+        }
+    })
+
+    countStatus.innerText = `Status: ${doneTodos}/${totalTodos}`;
+}
+
+// Função para carregar todos da API
+async function loadTodosFromAPI() {
+    const todos = await getTodosFromAPI();
+    
+    // Limpar lista atual
+    todoList.innerHTML = '';
+    
+    todos.forEach((todo) => {
+        saveTodo(todo.task, todo.done, 0, todo.priority);
+    });
+    
+    countTodos();
+}
+
+// Eventos
+todoForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    const inputValue = todoInput.value;
+
+    if (inputValue) {
+        await saveTodo(inputValue);
+    } else {
+        alert("Insira algo no campo!")
+    }
+    countTodos();
+})
+
+document.addEventListener("click", async (e) => {
+    const targetEl = e.target;
+    const parentEl = targetEl.closest("div");
+    let todoTitle;
+    let todoPriority;
+
+    if (parentEl && parentEl.querySelector("h3") && parentEl.querySelector("p")) {
+        todoTitle = parentEl.querySelector("h3").innerText;
+        todoPriority = parentEl.querySelector("p").innerText;
+    }
+
+    if (targetEl.classList.contains("finish-todo")) {
+        parentEl.classList.toggle("done");
+        await updateStatusTodoInAPI(todoTitle);
+    }
+
+    if (targetEl.classList.contains("remove-todo")) {
+        parentEl.remove();
+        await removeTodoFromAPI(todoTitle);
+    }
+
+    if (targetEl.classList.contains("edit-todo")) {
+        toggleForms();
+        toolbar.style.display = "none";
+        countStatus.style.display = "none";
+        editInput.value = todoTitle;
+        if (todoPriority === "Baixa") {
+            editselectPriority.value = "low";
+        } if (todoPriority === "Alta") {
+            editselectPriority.value = "high";
+        } if (todoPriority === "Média") {
+            editselectPriority.value = "middle";
+        }
+        oldInputValue = todoTitle;
+    }
+    countTodos();
+    filterTodos(filterBtn.value);
+})
+
+cancelEditBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    toolbar.style.display = "flex";
+    countStatus.style.display = "flex";
+    toggleForms();
+})
+
+editForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    toolbar.style.display = "flex";
+    countStatus.style.display = "flex";
+    const editInputValue = editInput.value;
+    const editSelectValue = editselectPriority.value;
+
+    if (editInputValue || editSelectValue) {
+        await updateTodo(editInputValue, editSelectValue);
+    }
+
+    toggleForms();
+})
+
+searchInput.addEventListener("keyup", (e) => {
+
+    const search = e.target.value;
+    getSearchTodos(search);
+})
+
+eraseBtn.addEventListener("click", (e) => {
+
+    e.preventDefault();
+    deleteSearch();
+})
+
+filterBtn.addEventListener("change", (e) => {
+    const filterValue = e.target.value;
+
+    filterTodos(filterValue);
+})
+
+// Carregar todos quando a página carrega
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadTodosFromAPI();
+});
+
