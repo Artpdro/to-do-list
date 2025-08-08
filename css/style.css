@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans&family=Roboto:wght@100;300&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    color: #000000;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100vh;
+}
+
+body {
+    background: #155294;
+    background-position: center;
+    background-size: auto;
+}
+
+button {
+    background-color: #ffffff;
+    border: 0.5px solid #102f5e;
+    padding: .3rem .6rem;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.4s;
+}
+
+button:hover {
+    background-color: #102F5e;
+    color: #fff;
+}
+
+button:hover>i {
+    color: #fff;
+}
+
+button i {
+    color: #102F5e;
+    font-weight: bold;
+    pointer-events: none;
+}
+
+input,
+select {
+    padding: 0.25rem 0.5rem;
+}
+
+.hide {
+    display: none;
+}
+
+#title-todo {
+    font-family: 'PT Sans', sans-serif;
+    color: #102f5e;
+}
+
+.todo-container {
+    max-width: 450px;
+    margin: 3rem auto;
+    background-color: #fdfdfd;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 5px 5px 10px #888888;
+}
+
+.todo-container header {
+    text-align: center;
+    padding: 0 1rem 1rem;
+    border-bottom: 0.1rem solid #14213d;
+}
+
+#todo-form,
+#edit-form {
+    padding: 1rem;
+}
+
+#todo-form p,
+#edit-form p {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+#select-priority {
+    margin-right: 5px;
+}
+
+.form-control {
+    display: flex;
+}
+
+.form-control input {
+    margin-right: .3rem;
+    width: 100%;
+}
+
+#cancel-edit-btn {
+    margin-top: 1rem;
+}
+
+#toolbar {
+    padding: 1rem;
+    border-bottom: 0.1rem solid #14213d;
+    display: flex;
+}
+
+#toolbar h4 {
+    margin-bottom: 0.5rem;
+}
+
+#search {
+    padding-right: 1rem;
+    margin-right: 1rem;
+    width: 65%;
+    display: flex;
+    flex-direction: column;
+}
+
+#search form {
+    display: flex;
+}
+
+#search input {
+    width: 100%;
+    margin-right: 0.3rem;
+}
+
+#filter {
+    width: 35%;
+    display: flex;
+    flex-direction: column;
+}
+
+#filter select {
+    flex: 1;
+}
+
+#select-priority-edit {
+    margin-right: 5px;
+}
+
+#countStatus {
+    display: flex;
+    justify-content: end;
+    margin-right: 5%;
+    font-style: italic;
+}
+
+.todo {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0.7rem;
+    transition: .3s;
+    size: 10px;
+    border-bottom: 1px solid #14213d;
+}
+
+#priority-high {
+    font-size: 0.8em;
+    background-color: crimson;
+    font-weight: bold;
+    width: 15%;
+    margin-left: 2%;
+    display: flex;
+    justify-content: center;
+}
+
+#priority-middle {
+    font-size: 0.8em;
+    background-color: #ee740a;
+    font-weight: bold;
+    width: 15%;
+    margin-left: 2%;
+    display: flex;
+    justify-content: center;
+}
+
+#priority-low {
+    font-size: 0.8em;
+    background-color: #122340;
+    font-weight: bold;
+    width: 15%;
+    margin-left: 2%;
+    display: flex;
+    justify-content: center;
+}
+
+
+#priority-low p,
+#priority-middle p,
+#priority-high p {
+    color: #fff;
+}
+
+
+.todo h3 {
+    flex: 1;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.todo button {
+    margin-left: 0.4rem;
+}
+
+.done {
+    background-color: #395169;
+}
+
+.done h3 {
+    color: #fff;
+    text-decoration: line-through;
+    font-style: italic;
+}
